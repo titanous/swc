@@ -1180,10 +1180,10 @@ impl Compiler {
 fn load_swcrc(path: &Path) -> Result<Rc, Error> {
     let content = read_to_string(path).context("failed to read config (.swcrc) file")?;
 
-    parse_swcrc(&content)
+    parse_swcrc(&content, path.to_path_buf())
 }
 
-fn parse_swcrc(s: &str) -> Result<Rc, Error> {
+fn parse_swcrc(s: &str, from_path: PathBuf) -> Result<Rc, Error> {
     fn convert_json_err(e: serde_json::Error) -> Error {
         let line = e.line();
         let column = e.column();
@@ -1216,6 +1216,7 @@ fn parse_swcrc(s: &str) -> Result<Rc, Error> {
 
     serde_json::from_value(v)
         .map(Rc::Single)
+        .map(|rc| rc.with_config_filename(from_path.into()))
         .map_err(convert_json_err)
 }
 

@@ -31,6 +31,7 @@ use swc_common::{
     comments::SingleThreadedComments,
     errors::Handler,
     plugin::metadata::TransformPluginMetadataContext,
+    util::take::Take,
     FileName, Mark, SourceMap, SyntaxContext,
 };
 use swc_config::{
@@ -203,10 +204,6 @@ pub struct Options {
 
     #[serde(default = "default_swcrc")]
     pub swcrc: bool,
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[serde(default)]
-    pub swcrc_roots: Option<PathBuf>,
 
     #[serde(default = "default_env_name")]
     pub env_name: String,
@@ -554,6 +551,7 @@ impl Options {
                 experimental.plugins,
                 transform_metadata_context,
                 Some(plugin_resolver),
+                cfg.config_filename,
                 comments,
                 source_map,
                 unresolved_mark,
@@ -817,6 +815,23 @@ impl Rc {
 
         bail!(".swcrc exists but not matched")
     }
+
+    pub fn with_config_filename(self, config_filename: FileName) -> Self {
+        match self {
+            Rc::Single(mut c) => {
+                c.config_filename = Some(config_filename);
+                Rc::Single(c)
+            }
+            Rc::Multi(mut cs) => Rc::Multi(
+                cs.into_iter()
+                    .map(|mut c| {
+                        c.config_filename = Some(config_filename.clone());
+                        c
+                    })
+                    .collect(),
+            ),
+        }
+    }
 }
 
 /// A single object in the `.swcrc` file
@@ -862,6 +877,9 @@ pub struct Config {
 
     #[serde(rename = "$schema")]
     pub schema: Option<String>,
+
+    #[serde(skip)]
+    pub config_filename: Option<FileName>,
 }
 
 /// Second argument of `minify`.

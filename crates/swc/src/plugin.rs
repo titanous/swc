@@ -32,15 +32,19 @@ pub fn plugins(
     configured_plugins: Option<Vec<PluginConfig>>,
     metadata_context: std::sync::Arc<swc_common::plugin::metadata::TransformPluginMetadataContext>,
     resolver: Option<CachingResolver<NodeModulesResolver>>,
+    resolve_base: Option<FileName>,
     comments: Option<swc_common::comments::SingleThreadedComments>,
     source_map: std::sync::Arc<swc_common::SourceMap>,
     unresolved_mark: swc_common::Mark,
 ) -> impl Fold {
+    use swc_common::FileName;
+
     {
         RustPlugins {
             plugins: configured_plugins,
             metadata_context,
             resolver,
+            resolve_base,
             comments,
             source_map,
             unresolved_mark,
@@ -57,6 +61,7 @@ struct RustPlugins {
     plugins: Option<Vec<PluginConfig>>,
     metadata_context: std::sync::Arc<swc_common::plugin::metadata::TransformPluginMetadataContext>,
     resolver: Option<CachingResolver<NodeModulesResolver>>,
+    resolve_base: Option<swc_common::FileName>,
     comments: Option<swc_common::comments::SingleThreadedComments>,
     source_map: std::sync::Arc<swc_common::SourceMap>,
     unresolved_mark: swc_common::Mark,
@@ -115,7 +120,12 @@ impl RustPlugins {
                             .resolver
                             .as_ref()
                             .expect("filesystem_cache should provide resolver")
-                            .resolve(&FileName::Real(PathBuf::from(&p.0)), &p.0)?;
+                            .resolve(
+                                self.resolve_base
+                                    .as_ref()
+                                    .unwrap_or_else(|| &FileName::Real(PathBuf::from(&p.0))),
+                                &p.0,
+                            )?;
 
                         let path = if let FileName::Real(value) = resolved_path {
                             Arc::new(value)
