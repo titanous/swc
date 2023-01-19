@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use relative_path::RelativePath;
 use swc_core::{
     base::{
-        config::{ConfigFile, Options, SourceMapsConfig},
+        config::{Config, ConfigFile, Options, SourceMapsConfig},
         try_with_handler, Compiler, HandlerOpts, TransformOutput,
     },
     common::{
@@ -29,8 +29,8 @@ use crate::util::trace::init_trace;
 #[derive(Parser)]
 pub struct CompileOptions {
     /// Override a config from .swcrc file.
-    #[clap(long)]
-    config: Option<Vec<String>>,
+    #[clap(long, value_parser = parse_config)]
+    config: Option<Config>,
 
     /// Path to a .swcrc file to use
     #[clap(long)]
@@ -105,6 +105,10 @@ pub struct CompileOptions {
      *include_dotfiles: bool,
      *only: Option<String>,
      *no_swcrc: bool, */
+}
+
+fn parse_config(s: &str) -> Result<Config, serde_json::Error> {
+    serde_json::from_str(s)
 }
 
 static COMPILER: Lazy<Arc<Compiler>> = Lazy::new(|| {
@@ -271,6 +275,7 @@ impl CompileOptions {
         });
 
         let mut options = Options {
+            config: self.config.to_owned().unwrap_or_default(),
             config_file,
             ..Options::default()
         };
